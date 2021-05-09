@@ -7,6 +7,8 @@ package modulgame;
 
 import java.awt.Color;
 import java.awt.Graphics;
+import java.util.ArrayList;
+import java.util.Collections;
 
 /**
  *
@@ -14,25 +16,39 @@ import java.awt.Graphics;
  */
 public class Enemy  extends GameObject{
     
-    public Enemy(int x, int y, ID id){
+    private double speed;
+    private int dirX = 1;
+    private int dirY = 1;
+    
+    public Enemy(int x, int y, ID id, double speed){
         super(x, y, id);
         
-        //speed = 1;
+        this.speed = speed;
     }
-
+    
     @Override
     public void tick() {
-        x += vel_x;
-        y += vel_y;
+        // Speed enemy disesuaikan, diimplementasikan dengan jauh jarak jalan
+        x += dirX * speed;
+        y += dirY * speed;
         
-        x = Game.clamp(x, 0, Game.WIDTH - 60);
-        y = Game.clamp(y, 0, Game.HEIGHT - 80);
+        //Enemy berjalan sendiri (memantul)
+        if(x >= Game.WIDTH - 60){
+            dirX = -1;
+        } else if(y >= Game.HEIGHT - 80){
+            dirY = -1;
+        } else if(x <= 5){
+            dirX = 1;
+        } else if(y <= 5){
+            dirY = 1;
+        }
 
     }
 
     @Override
     public void render(Graphics g) {
+        
         g.setColor(Color.decode("#cc0000"));
-        g.fillRect(x, y, 10, 10);
+        g.fillRect(x, y, 20, 20);
     }
 }

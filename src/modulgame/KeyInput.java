@@ -46,6 +46,7 @@ public class KeyInput extends KeyAdapter{
                         tempObject.setVel_x(+5);
                     }
                 }
+                // Pergerakan player 2 dengan arrow
                 if(tempObject.getId() == ID.Player2){
                     if(key == KeyEvent.VK_UP){
                         tempObject.setVel_y(-5);

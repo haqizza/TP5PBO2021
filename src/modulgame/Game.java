@@ -30,19 +30,21 @@ public class Game extends Canvas implements Runnable{
     
     private String username = "";
     private String username2 = "";
-
+    
+    private Clip clip;
     
     private int score = 0;
     
-    private int time = 10;    
+    private int time = 20;    
     private int playTime = 0;
+    private int allScore = 0;
 
+    private double enemySpeed = 3;
     
     private Thread thread;
     private boolean running = false;
     
     private Handler handler;
-    private Handler handler2;
 
     
     public enum STATE{
@@ -52,7 +54,10 @@ public class Game extends Canvas implements Runnable{
     
     public STATE gameState = STATE.Game;
     
-    public Game(String username){
+    public Game(String username, double speed){
+        //BGM
+        playSound("/Torimase8.wav");
+        
         window = new Window(WIDTH, HEIGHT, "TP praktikum 5", this);
         
         handler = new Handler();
@@ -60,15 +65,29 @@ public class Game extends Canvas implements Runnable{
         this.addKeyListener(new KeyInput(handler, this));
         
         this.username = username;
+        
+        // Kecepatan enemy dan waktu disesuaikan
+        enemySpeed = speed;
+        if(speed == 5){
+            time = 10;
+        }
+        else if(speed == 7){
+            time = 5;
+        }
         
         if(gameState == STATE.Game){
             handler.addObject(new Items(100,150, ID.Item));
-            handler.addObject(new Items(200,350, ID.Item));
-            handler.addObject(new Player(200,200, ID.Player));
+            handler.addObject(new Items(200,350, ID.Item));           
+            handler.addObject(new Enemy(0,0, ID.Enemy, enemySpeed));
+            handler.addObject(new Enemy(0,180, ID.Enemy2, enemySpeed));
+            handler.addObject(new Player(200,200, ID.Player)); // Player 2
         }
     }
     
-    public Game(String username, String username2){
+    public Game(String username, String username2, double speed){
+        //BGM
+        playSound("/Torimase8.wav");
+        
         window = new Window(WIDTH, HEIGHT, "TP praktikum 5", this);
         
         handler = new Handler();
@@ -76,16 +95,26 @@ public class Game extends Canvas implements Runnable{
         this.addKeyListener(new KeyInput(handler, this));
         
         this.username = username;
+        
+        // Kecepatan enemy dan waktu disesuaikan
+        enemySpeed = speed;
+        if(speed == 5){
+            time = 10;
+        }
+        else if(speed == 7){
+            time = 5;
+        }
         
         if(gameState == STATE.Game){
             handler.addObject(new Items(100,150, ID.Item));
             handler.addObject(new Items(200,350, ID.Item));            
-            handler.addObject(new Enemy(0,0, ID.Enemy));
+            handler.addObject(new Enemy(0,0, ID.Enemy, enemySpeed));
+            handler.addObject(new Enemy(0,180, ID.Enemy2, enemySpeed));
             handler.addObject(new Player(200,200, ID.Player));
-            handler.addObject(new Player2(100,100, ID.Player2));
+            handler.addObject(new Player2(100,100, ID.Player2)); // Player 2
         }
     }
-
+    
     public synchronized void start(){
         thread = new Thread(this);
         thread.start();
@@ -96,6 +125,7 @@ public class Game extends Canvas implements Runnable{
         try{
             thread.join();
             running = false;
+            clip.stop();
         }catch(Exception e){
             e.printStackTrace();
         }
@@ -132,18 +162,25 @@ public class Game extends Canvas implements Runnable{
                     if(time>0){
                         time--;
                         playTime++;
+                        allScore = playTime + score;
                     }else{
                         gameState = STATE.GameOver;
-                        
-                        // Simpan data score player
-                        dbConnection db = new dbConnection();
-
-                        db.saveScore(username + " & " + username2, score);
                     }
                 }
+                else if(gameState == STATE.GameOver){
+                    running = false;
+                }
             }
+        }        
+        // Simpan data score player
+        dbConnection db = new dbConnection();
+
+        if(username2.length() > 0){
+            db.saveScore(username + " & " + username2, allScore);
+        } else {
+            db.saveScore(username, allScore);
         }
-        score = playTime + score;
+               
         stop();
     }
     
@@ -152,6 +189,9 @@ public class Game extends Canvas implements Runnable{
         if(gameState == STATE.Game){
             GameObject playerObject = null;
             GameObject playerObject2 = null;
+            GameObject enemyObject = null;            
+            GameObject enemyObject2 = null;
+
 
             for(int i=0;i< handler.object.size(); i++){
                 if(handler.object.get(i).getId() == ID.Player){
@@ -159,18 +199,28 @@ public class Game extends Canvas implements Runnable{
                 }
                 if(handler.object.get(i).getId() == ID.Player2){
                    playerObject2 = handler.object.get(i);
-                }            
+                }   
+                if(handler.object.get(i).getId() == ID.Enemy){
+                   enemyObject = handler.object.get(i);
+                }
+                if(handler.object.get(i).getId() == ID.Enemy2){
+                   enemyObject2 = handler.object.get(i);
+                }
             }
             
-            if(playerObject != null || playerObject2 != null){
+            if(playerObject != null || playerObject2 != null){              
                 for(int i=0;i< handler.object.size(); i++){
                     if(handler.object.get(i).getId() == ID.Item){
                         if(checkCollision(playerObject, handler.object.get(i))){
                             playSound("/Eat.wav");
                             handler.removeObject(handler.object.get(i));
-                            score = score + 10;
-                            time = time + 5;
                             
+                            // Score didapatkan diacak dengan range 1-10
+                            score = score + getRandomNumber(1, 10);
+                            // Waktu didapatkan diacak dengan range 1-7
+                            time = time + getRandomNumber(1, 7);
+                            
+                            // Add item baru
                             // Cek apakah object empty
                             if(handler.object.size() > 0){
                                 addItem();
@@ -181,21 +231,34 @@ public class Game extends Canvas implements Runnable{
                             break;
                         }
                         
-                        if(checkCollision(playerObject2, handler.object.get(i))){
+                        if(playerObject2 != null && checkCollision(playerObject2, handler.object.get(i))){
                             playSound("/Eat.wav");
                             handler.removeObject(handler.object.get(i));
                             score = score + 10;
                             time = time + 5;
                             
+                            // Add item baru
                             // Cek apakah object empty
                             if(handler.object.size() > 0){
-                                addItem();                                
-//                                addItem();
+                                addItem();
                             }
                             
                             break;
                         }
                     }
+                }
+                
+                // Cek apakah player menabrak enemy
+                if(checkCollision(playerObject, enemyObject) || checkCollision(playerObject, enemyObject2)){
+                    handler.removeObject(playerObject);
+                    playerObject = null;
+                }
+                if(playerObject2 != null && (checkCollision(playerObject2, enemyObject) || checkCollision(playerObject, enemyObject2))){
+                    handler.removeObject(playerObject2);
+                    playerObject2 = null;
+                }
+                if(playerObject == null && playerObject2 == null){
+                    gameState = STATE.GameOver;
                 }
             }
             
@@ -270,7 +333,7 @@ public class Game extends Canvas implements Runnable{
 
             g.setColor(Color.BLACK);
             g.drawString("Time: " +Integer.toString(time), WIDTH-120, 20);
-        }else{ 
+        }else{    
             Font currentFont = g.getFont();
             Font newFont = currentFont.deriveFont(currentFont.getSize() * 3F);
             g.setFont(newFont);
@@ -283,7 +346,7 @@ public class Game extends Canvas implements Runnable{
             g.setFont(newScoreFont);
 
             g.setColor(Color.BLACK);
-            g.drawString("Score: " +Integer.toString(score), WIDTH/2 - 50, HEIGHT/2 - 10);
+            g.drawString("Score: " +Integer.toString(allScore), WIDTH/2 - 50, HEIGHT/2 - 10);
             
             g.setColor(Color.BLACK);
             g.drawString("Press Space to Continue", WIDTH/2 - 100, HEIGHT/2 + 30);
@@ -304,6 +367,7 @@ public class Game extends Canvas implements Runnable{
     }
     
     public void close(){
+        clip.stop();
         window.CloseWindow();
     }
     
@@ -313,7 +377,7 @@ public class Game extends Canvas implements Runnable{
             URL url = this.getClass().getResource(filename);
             AudioInputStream audioIn = AudioSystem.getAudioInputStream(url);
             // Get a sound clip resource.
-            Clip clip = AudioSystem.getClip();
+            clip = AudioSystem.getClip();
             // Open audio clip and load samples from the audio input stream.
             clip.open(audioIn);
             clip.start();
@@ -324,6 +388,5 @@ public class Game extends Canvas implements Runnable{
         } catch (LineUnavailableException e) {
            e.printStackTrace();
         }
-    
     }
 }

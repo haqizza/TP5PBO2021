@@ -61,8 +61,21 @@ public class dbConnection {
         // Fungsi simpan score ke DB
         try{
             connect();
-            String sql = "INSERT INTO highscore(Username, Score) VALUES('" + username + "', " + score + " )";
-            stm.executeUpdate(sql);
+            String sql = "SELECT * FROM highscore WHERE Username = '" + username + "'";
+            ResultSet res = stm.executeQuery(sql);            
+            
+            System.out.print("Ada entry"+ username +"\n");
+            if(res.next()){
+                if(score > res.getInt("Score")){
+                    sql = "UPDATE highscore SET Score = " + score + " WHERE Username = '" + username + "'";
+                    stm.executeUpdate(sql);
+                }
+            } else{    
+                sql = "INSERT INTO highscore(Username, Score) VALUES('" + username + "', " + score + " )";
+                stm.executeUpdate(sql);
+            }
+            
+            
         } catch (Exception e){
             System.err.println("Simpan gagal " +e.getMessage());
         }
